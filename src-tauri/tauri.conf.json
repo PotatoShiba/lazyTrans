@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lazytrans",
+  "productName": "lazyTrans",
   "version": "0.1.0",
-  "identifier": "com.maobai.lazytrans",
+  "identifier": "com.maobai.lazyTrans",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -10,9 +10,13 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "lazytrans",
+        "label": "daemon",
+        "title": "LazyTrans",
+        "url": "index.html",
+        "visible": true,
         "width": 800,
         "height": 600
       }
