@@ -3,9 +3,9 @@ import type { Component } from "solid-js";
 import { render } from "solid-js/web";
 import "./index.css";
 import { initTray } from "./tray";
-import ScreenshotApp from "./windows/screenshot/screenshot-app";
-import SettingsApp from "./windows/settings/settings-app";
-import TranslatorApp from "./windows/translator/translator-app";
+import ScreenshotApp from "./windows/screenshot";
+import SettingsApp from "./windows/settings";
+import TranslatorApp from "./windows/translator";
 
 const windowMap: Record<string, Component> = {
   daemon: () => null,
