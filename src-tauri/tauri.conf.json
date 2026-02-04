@@ -16,9 +16,7 @@
         "label": "daemon",
         "title": "LazyTrans",
         "url": "index.html",
-        "visible": true,
-        "width": 800,
-        "height": 600
+        "visible": false
       }
     ],
     "security": {

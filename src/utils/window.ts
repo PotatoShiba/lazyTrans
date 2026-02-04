@@ -1,239 +1,78 @@
-import type { WebviewOptions } from "@tauri-apps/api/webview";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import {
-  currentMonitor,
-  cursorPosition,
-  type Monitor,
-  monitorFromPoint,
-  primaryMonitor,
-  type WindowOptions,
-} from "@tauri-apps/api/window";
+import { WINDOW_CONFIG, type WindowLabel } from "../config/window.config";
 
-export type WindowLabel = "translator" | "settings" | "screenshot";
-
-type WebviewWindowOptions = Omit<
-  WebviewOptions,
-  "x" | "y" | "width" | "height"
-> &
-  WindowOptions;
-
-type PositionStrategy = "cursor-center" | "center" | "monitor-fullscreen";
-
-interface WindowDefinition {
-  title: string;
-  position: PositionStrategy;
-  options: WebviewWindowOptions;
+/**
+ * 获取或创建窗口实例
+ * 如果窗口已存在则返回现有窗口，否则创建新窗口
+ * @param label - 窗口标识符
+ * @returns 窗口实例
+ */
+export async function ensureWindow(label: WindowLabel) {
+  const win = await WebviewWindow.getByLabel(label);
+  return win ?? new WebviewWindow(label, WINDOW_CONFIG[label]);
 }
 
-const WINDOW_DEFINITIONS: Record<WindowLabel, WindowDefinition> = {
-  translator: {
-    title: "翻译",
-    position: "cursor-center",
-    options: {
-      url: "index.html",
-      width: 450,
-      height: 350,
-      minWidth: 350,
-      minHeight: 250,
-      resizable: true,
-      decorations: false,
-      transparent: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      focus: true,
-      visible: false,
-    },
-  },
-  settings: {
-    title: "设置 - LazyTrans",
-    position: "center",
-    options: {
-      url: "index.html",
-      width: 900,
-      height: 650,
-      resizable: true,
-      decorations: true,
-      focus: true,
-      visible: false,
-    },
-  },
-  screenshot: {
-    title: "截图翻译",
-    position: "monitor-fullscreen",
-    options: {
-      url: "index.html",
-      decorations: false,
-      transparent: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      resizable: false,
-      focus: true,
-      visible: false,
-    },
-  },
-};
-
-const creating = new Map<WindowLabel, Promise<WebviewWindow>>();
-
-async function getTargetMonitor(): Promise<Monitor | null> {
-  try {
-    const cursor = await cursorPosition();
-    const monitor = await monitorFromPoint(cursor.x, cursor.y);
-    if (monitor) {
-      return monitor;
-    }
-  } catch (error) {
-    console.warn("Failed to resolve monitor from cursor:", error);
-  }
-
-  return (await currentMonitor()) ?? (await primaryMonitor());
+/**
+ * 显示窗口并聚焦
+ * 如果窗口不存在则自动创建，然后显示并设置焦点
+ * @param label - 窗口标识符
+ * @returns 窗口实例
+ */
+export async function showWindow(label: WindowLabel) {
+  const win = await ensureWindow(label);
+  await win.show();
+  await win.setFocus();
+  return win;
 }
 
-function getWorkArea(monitor: Monitor): Monitor["workArea"] {
-  return (
-    monitor.workArea ?? {
-      position: monitor.position,
-      size: monitor.size,
-    }
-  );
-}
-
-function centerInArea(
-  area: Monitor["workArea"],
-  width: number,
-  height: number
-) {
-  const x = Math.round(area.position.x + (area.size.width - width) / 2);
-  const y = Math.round(area.position.y + (area.size.height - height) / 2);
-  return { x, y };
-}
-
-async function resolveWindowOptions(
-  definition: WindowDefinition
-): Promise<WebviewWindowOptions> {
-  const options: WebviewWindowOptions = {
-    ...definition.options,
-    title: definition.title,
-  };
-
-  const monitor = await getTargetMonitor();
-  if (!monitor) {
-    if (definition.position === "center") {
-      return {
-        ...options,
-        center: true,
-      };
-    }
-
-    return options;
-  }
-
-  const workArea = getWorkArea(monitor);
-
-  if (definition.position === "monitor-fullscreen") {
-    return {
-      ...options,
-      x: monitor.position.x,
-      y: monitor.position.y,
-      width: monitor.size.width,
-      height: monitor.size.height,
-    };
-  }
-
-  if (
-    (definition.position === "cursor-center" ||
-      definition.position === "center") &&
-    options.width &&
-    options.height
-  ) {
-    const position = centerInArea(workArea, options.width, options.height);
-    return {
-      ...options,
-      x: position.x,
-      y: position.y,
-    };
-  }
-
-  return options;
-}
-
-async function createWindow(label: WindowLabel): Promise<WebviewWindow> {
-  const definition = WINDOW_DEFINITIONS[label];
-  const options = await resolveWindowOptions(definition);
-
-  return new Promise((resolve, reject) => {
-    const window = new WebviewWindow(label, options);
-
-    window
-      .once("tauri://created", () => {
-        resolve(window);
-      })
-      .catch(reject);
-
-    window
-      .once("tauri://error", (event) => {
-        reject(
-          new Error(
-            `Failed to create window ${label}: ${JSON.stringify(event.payload)}`
-          )
-        );
-      })
-      .catch(reject);
-  });
-}
-
-export async function ensureWindow(label: WindowLabel): Promise<WebviewWindow> {
-  const existing = await WebviewWindow.getByLabel(label);
-  if (existing) {
-    return existing;
-  }
-
-  const pending = creating.get(label);
-  if (pending) {
-    return pending;
-  }
-
-  const creation = createWindow(label);
-  creating.set(label, creation);
-
-  try {
-    return await creation;
-  } finally {
-    creating.delete(label);
+/**
+ * 隐藏窗口
+ * 如果窗口存在则将其隐藏
+ * @param label - 窗口标识符
+ */
+export async function hideWindow(label: WindowLabel) {
+  const win = await WebviewWindow.getByLabel(label);
+  if (win) {
+    await win.hide();
   }
 }
 
-export async function showWindow(label: WindowLabel): Promise<WebviewWindow> {
-  const window = await ensureWindow(label);
-  await window.show();
-  await window.setFocus();
-  return window;
-}
-
-export async function hideWindow(label: WindowLabel): Promise<void> {
-  const window = await WebviewWindow.getByLabel(label);
-  if (!window) {
-    return;
+/**
+ * 关闭窗口
+ * 如果窗口存在则将其关闭
+ * @param label - 窗口标识符
+ */
+export async function closeWindow(label: WindowLabel) {
+  const win = await WebviewWindow.getByLabel(label);
+  if (win) {
+    await win.close();
   }
-  await window.hide();
 }
 
-export async function closeWindow(label: WindowLabel): Promise<void> {
-  const window = await WebviewWindow.getByLabel(label);
-  if (!window) {
-    return;
-  }
-  await window.close();
-}
+/**
+ * 切换窗口显示状态
+ * 如果窗口可见则隐藏，否则显示并聚焦
+ * @param label - 窗口标识符
+ */
+export async function toggleWindow(label: WindowLabel) {
+  const win = await ensureWindow(label);
+  const visible = await win.isVisible();
 
-export async function toggleWindow(label: WindowLabel): Promise<void> {
-  const window = await ensureWindow(label);
-  const visible = await window.isVisible();
   if (visible) {
-    await window.hide();
-    return;
+    await win.hide();
+  } else {
+    await win.unminimize();
+    await win.show();
+    await win.setFocus();
   }
+}
 
-  await window.show();
-  await window.setFocus();
+/**
+ * 检查窗口是否存在
+ * @param label - 窗口标识符
+ * @returns 窗口是否存在
+ */
+export async function hasWindow(label: WindowLabel) {
+  const win = await WebviewWindow.getByLabel(label);
+  return win !== null;
 }
