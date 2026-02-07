@@ -3,16 +3,8 @@ use tauri::{AppHandle, Manager, Runtime, WebviewWindow, async_runtime::spawn};
 pub static MAIN_WINDOW_LABEL: &str = "translator";
 pub static PREFERENCE_WINDOW_LABEL: &str = "settings";
 
-#[cfg(target_os = "macos")]
-mod macos;
-
-#[cfg(not(target_os = "macos"))]
 mod common;
 
-#[cfg(target_os = "macos")]
-pub use macos::*;
-
-#[cfg(not(target_os = "macos"))]
 pub use common::*;
 
 pub fn is_main_window<R: Runtime>(window: &WebviewWindow<R>) -> bool {
