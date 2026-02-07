@@ -1,8 +1,10 @@
 use tauri::{Manager, WindowEvent};
-use tauri_plugin_custom_window::{show_main_window, MAIN_WINDOW_LABEL};
+use tauri_plugin_custom_window::show_window_by_label;
 
 #[cfg(target_os = "macos")]
 mod setup;
+
+pub static MAIN_WINDOW_LABEL: &str = "translator";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -35,7 +37,7 @@ pub fn run() {
     app.run(|app_handle, event| match event {
         #[cfg(target_os = "macos")]
         tauri::RunEvent::Reopen { .. } => {
-            show_main_window(app_handle);
+            show_window_by_label(app_handle, MAIN_WINDOW_LABEL);
         }
         _ => {
             let _ = app_handle;
