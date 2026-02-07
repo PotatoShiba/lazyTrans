@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { WindowLabel } from "../config/window.config";
 import { LISTEN_KEY } from "../constants";
@@ -49,4 +49,38 @@ export async function toggleWindowVisible(label?: WindowLabel) {
 
 export function setTaskbarVisibility(visible: boolean) {
   invoke(COMMAND.SET_TASKBAR_VISIBILITY, { visible });
+}
+
+export async function listenWindowVisibility(
+  label?: WindowLabel
+): Promise<UnlistenFn> {
+  const appWindow = getCurrentWebviewWindow();
+  const targetLabel = label ?? (appWindow.label as WindowLabel);
+
+  const unlistenShow = await listen<WindowLabel>(
+    LISTEN_KEY.SHOW_WINDOW,
+    (event) => {
+      if (event.payload !== targetLabel) {
+        return;
+      }
+
+      showWindow();
+    }
+  );
+
+  const unlistenHide = await listen<WindowLabel>(
+    LISTEN_KEY.HIDE_WINDOW,
+    (event) => {
+      if (event.payload !== targetLabel) {
+        return;
+      }
+
+      hideWindow();
+    }
+  );
+
+  return () => {
+    unlistenShow();
+    unlistenHide();
+  };
 }
