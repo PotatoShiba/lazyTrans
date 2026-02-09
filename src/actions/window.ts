@@ -1,5 +1,5 @@
 import { exit } from "@tauri-apps/plugin-process";
-import { hideAllWindows, showWindow } from "../utils/window";
+import { hideAllWindows, setAlwaysOnTop, showWindow } from "../utils/window";
 
 export async function openSettings() {
   await hideAllWindows();
@@ -8,6 +8,10 @@ export async function openSettings() {
 
 export function openTranslator() {
   showWindow("translator");
+}
+
+export function pinTranslator(pinned: boolean) {
+  setAlwaysOnTop(pinned, "translator");
 }
 
 export function quitApp() {

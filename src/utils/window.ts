@@ -1,3 +1,4 @@
+import { hide } from "@tauri-apps/api/app";
 import {
   getCurrentWebviewWindow,
   WebviewWindow,
@@ -10,6 +11,22 @@ async function getWindow(label?: WindowLabel) {
   }
 
   return await WebviewWindow.getByLabel(label);
+}
+
+async function focusAnotherVisibleWindow(): Promise<boolean> {
+  const windows = await WebviewWindow.getAll();
+
+  for (const win of windows) {
+    if (await win.isVisible()) {
+      await win.show();
+      await win.unminimize();
+      await win.setFocus();
+      return true;
+    }
+  }
+
+  await hide();
+  return false;
 }
 
 export function showWindow(label?: WindowLabel) {
@@ -28,12 +45,14 @@ export function showWindow(label?: WindowLabel) {
 
 export function hideWindow(label?: WindowLabel) {
   getWindow(label)
-    .then((win) => {
+    .then(async (win) => {
       if (!win) {
         return;
       }
 
-      return win.hide();
+      await win.hide();
+
+      await focusAnotherVisibleWindow();
     })
     .catch(() => undefined);
 }
