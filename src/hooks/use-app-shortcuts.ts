@@ -18,10 +18,8 @@ const globalShortcuts: GlobalShortcutEntry[] = [
 export function useAppShortcuts() {
   const registerGlobalShortcuts = async () => {
     for (const { shortcut, handler } of globalShortcuts) {
-      await register(shortcut, (event) => {
-        if (event.state === "Pressed") {
-          handler();
-        }
+      await register(shortcut, () => {
+        handler();
       });
     }
   };

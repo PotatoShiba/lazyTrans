@@ -14,6 +14,13 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "daemon",
+        "url": "daemon.html",
+        "visible": false,
+        "width": 0,
+        "height": 0
+      },
+      {
         "label": "translator",
         "title": "翻译",
         "url": "index.html/#/",
@@ -21,24 +28,9 @@
         "minWidth": 350,
         "minHeight": 250,
         "resizable": true,
+        "decorations": false,
         "alwaysOnTop": false,
         "transparent": true,
-        "decorations": false,
-        "acceptFirstMouse": true,
-        "skipTaskbar": true,
-        "visible": false
-      },
-      {
-        "label": "settings",
-        "title": "设置",
-        "url": "index.html/#/settings",
-        "width": 900,
-        "height": 650,
-        "resizable": true,
-        "decorations": true,
-        "alwaysOnTop": false,
-        "hiddenTitle": true,
-        "center": true,
         "visible": false
       }
     ],
