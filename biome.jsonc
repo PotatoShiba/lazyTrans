@@ -5,7 +5,7 @@
     "rules": {
       "style": {
         "useConsistentTypeDefinitions": {
-          "level": "info",
+          "level": "off",
           "options": {
             "style": "type"
           }
