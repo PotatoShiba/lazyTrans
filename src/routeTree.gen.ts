@@ -14,7 +14,6 @@ import { Route as IndexRouteImport } from "./routes/index";
 import { Route as SettingsIndexRouteImport } from "./routes/settings/index";
 import { Route as SettingsShortcutsRouteImport } from "./routes/settings/shortcuts";
 import { Route as SettingsLanguageRouteImport } from "./routes/settings/language";
-import { Route as SettingsAppearanceRouteImport } from "./routes/settings/appearance";
 import { Route as SettingsAboutRouteImport } from "./routes/settings/about";
 
 const SettingsRouteRoute = SettingsRouteRouteImport.update({
@@ -42,11 +41,6 @@ const SettingsLanguageRoute = SettingsLanguageRouteImport.update({
   path: "/language",
   getParentRoute: () => SettingsRouteRoute,
 } as any);
-const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
-  id: "/appearance",
-  path: "/appearance",
-  getParentRoute: () => SettingsRouteRoute,
-} as any);
 const SettingsAboutRoute = SettingsAboutRouteImport.update({
   id: "/about",
   path: "/about",
@@ -57,7 +51,6 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/settings": typeof SettingsRouteRouteWithChildren;
   "/settings/about": typeof SettingsAboutRoute;
-  "/settings/appearance": typeof SettingsAppearanceRoute;
   "/settings/language": typeof SettingsLanguageRoute;
   "/settings/shortcuts": typeof SettingsShortcutsRoute;
   "/settings/": typeof SettingsIndexRoute;
@@ -65,7 +58,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/settings/about": typeof SettingsAboutRoute;
-  "/settings/appearance": typeof SettingsAppearanceRoute;
   "/settings/language": typeof SettingsLanguageRoute;
   "/settings/shortcuts": typeof SettingsShortcutsRoute;
   "/settings": typeof SettingsIndexRoute;
@@ -75,7 +67,6 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/settings": typeof SettingsRouteRouteWithChildren;
   "/settings/about": typeof SettingsAboutRoute;
-  "/settings/appearance": typeof SettingsAppearanceRoute;
   "/settings/language": typeof SettingsLanguageRoute;
   "/settings/shortcuts": typeof SettingsShortcutsRoute;
   "/settings/": typeof SettingsIndexRoute;
@@ -86,7 +77,6 @@ export interface FileRouteTypes {
     | "/"
     | "/settings"
     | "/settings/about"
-    | "/settings/appearance"
     | "/settings/language"
     | "/settings/shortcuts"
     | "/settings/";
@@ -94,7 +84,6 @@ export interface FileRouteTypes {
   to:
     | "/"
     | "/settings/about"
-    | "/settings/appearance"
     | "/settings/language"
     | "/settings/shortcuts"
     | "/settings";
@@ -103,7 +92,6 @@ export interface FileRouteTypes {
     | "/"
     | "/settings"
     | "/settings/about"
-    | "/settings/appearance"
     | "/settings/language"
     | "/settings/shortcuts"
     | "/settings/";
@@ -151,13 +139,6 @@ declare module "@tanstack/solid-router" {
       preLoaderRoute: typeof SettingsLanguageRouteImport;
       parentRoute: typeof SettingsRouteRoute;
     };
-    "/settings/appearance": {
-      id: "/settings/appearance";
-      path: "/appearance";
-      fullPath: "/settings/appearance";
-      preLoaderRoute: typeof SettingsAppearanceRouteImport;
-      parentRoute: typeof SettingsRouteRoute;
-    };
     "/settings/about": {
       id: "/settings/about";
       path: "/about";
@@ -170,7 +151,6 @@ declare module "@tanstack/solid-router" {
 
 interface SettingsRouteRouteChildren {
   SettingsAboutRoute: typeof SettingsAboutRoute;
-  SettingsAppearanceRoute: typeof SettingsAppearanceRoute;
   SettingsLanguageRoute: typeof SettingsLanguageRoute;
   SettingsShortcutsRoute: typeof SettingsShortcutsRoute;
   SettingsIndexRoute: typeof SettingsIndexRoute;
@@ -178,7 +158,6 @@ interface SettingsRouteRouteChildren {
 
 const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
   SettingsAboutRoute: SettingsAboutRoute,
-  SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsLanguageRoute: SettingsLanguageRoute,
   SettingsShortcutsRoute: SettingsShortcutsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
