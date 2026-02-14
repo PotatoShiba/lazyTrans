@@ -2,18 +2,47 @@ import { emit } from "@tauri-apps/api/event";
 import type { Store } from "@tauri-apps/plugin-store";
 import { createSignal } from "solid-js";
 import {
-  DEFAULT_SHORTCUTS,
   getDefaultKeyMap,
-  type ShortcutDefinition,
+  SHORTCUT_METAS,
+  type ShortcutMeta,
 } from "../../config/shortcuts.config";
-import type { SettingsModule } from "./base";
+import { isMac } from "../../utils/platform";
+import { getStore, type SettingsModule } from "./base";
 
 type ShortcutKeyMap = Record<string, string>;
 
-/** daemon 监听此事件来重新注册全局快捷键 */
 export const SHORTCUTS_CHANGED_EVENT = "shortcuts-changed";
 
 const [getShortcutKeys, setShortcutKeys] = createSignal<ShortcutKeyMap>({});
+
+function migrateKey(key: string): string {
+  return key
+    .replace(/\bCommandOrControl\b/gi, isMac ? "command" : "ctrl")
+    .replace(/\bControl\b/g, "ctrl")
+    .replace(/\bShift\b/g, "shift")
+    .replace(/\bAlt\b/g, "alt")
+    .toLowerCase();
+}
+
+function migrateKeyMap(map: ShortcutKeyMap): ShortcutKeyMap {
+  const migrated: ShortcutKeyMap = {};
+  let changed = false;
+  for (const [id, key] of Object.entries(map)) {
+    const newKey = migrateKey(key);
+    if (newKey !== key) {
+      changed = true;
+    }
+    migrated[id] = newKey;
+  }
+  return changed ? migrated : map;
+}
+
+export async function loadShortcutKeysFromStore(): Promise<ShortcutKeyMap> {
+  const store = await getStore();
+  const saved = await store.get<ShortcutKeyMap>("shortcuts");
+  const merged = { ...getDefaultKeyMap(), ...(saved || {}) };
+  return migrateKeyMap(merged);
+}
 
 class ShortcutsStore implements SettingsModule {
   private store: Store | null = null;
@@ -22,7 +51,13 @@ class ShortcutsStore implements SettingsModule {
   async load(store: Store) {
     this.store = store;
     const saved = await store.get<ShortcutKeyMap>(this.STORE_KEY);
-    setShortcutKeys(saved || getDefaultKeyMap());
+    const defaults = getDefaultKeyMap();
+    const merged = { ...defaults, ...(saved || {}) };
+    const migrated = migrateKeyMap(merged);
+    setShortcutKeys(migrated);
+    if (migrated !== merged) {
+      await store.set(this.STORE_KEY, migrated);
+    }
   }
 
   getAllShortcutKeys = () => getShortcutKeys();
@@ -43,19 +78,13 @@ class ShortcutsStore implements SettingsModule {
     await emit(SHORTCUTS_CHANGED_EVENT);
   };
 
-  getShortcuts = (): (ShortcutDefinition & { currentKey: string })[] => {
+  getShortcuts = (): (ShortcutMeta & { currentKey: string })[] => {
     const keys = getShortcutKeys();
-    return DEFAULT_SHORTCUTS.map((def) => ({
-      ...def,
-      currentKey: keys[def.id] || def.defaultKey,
+    return SHORTCUT_METAS.map((meta) => ({
+      ...meta,
+      currentKey: keys[meta.id] || meta.defaultKey,
     }));
   };
-
-  getGlobalShortcuts = () =>
-    this.getShortcuts().filter((s) => s.category === "global");
-
-  getWindowShortcuts = () =>
-    this.getShortcuts().filter((s) => s.category === "internal");
 }
 
 export const shortcutsStore = new ShortcutsStore();

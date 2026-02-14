@@ -1,34 +1,29 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { register, unregisterAll } from "@tauri-apps/plugin-global-shortcut";
 import { onCleanup, onMount } from "solid-js";
-import {
-  DEFAULT_SHORTCUTS,
-  getDefaultKeyMap,
-} from "../config/shortcuts.config";
+import { getGlobalShortcutMetas } from "../config/shortcuts.config";
 import { initSettings } from "../stores/settings";
-import { getStore } from "../stores/settings/base";
-import { SHORTCUTS_CHANGED_EVENT } from "../stores/settings/shortcuts.store";
+import {
+  loadShortcutKeysFromStore,
+  SHORTCUTS_CHANGED_EVENT,
+} from "../stores/settings/shortcuts.store";
 
-async function loadShortcutKeysFromStore(): Promise<Record<string, string>> {
-  const store = await getStore();
-  return (
-    (await store.get<Record<string, string>>("shortcuts")) || getDefaultKeyMap()
-  );
-}
+type ShortcutActionMap = Record<string, () => void | Promise<void>>;
 
-async function registerAllGlobalShortcuts() {
+async function registerAllGlobalShortcuts(actions: ShortcutActionMap) {
   const keys = await loadShortcutKeysFromStore();
 
-  for (const def of DEFAULT_SHORTCUTS) {
-    if (def.category !== "global") {
+  for (const meta of getGlobalShortcutMetas()) {
+    const action = actions[meta.id];
+    if (!action) {
       continue;
     }
 
-    const key = keys[def.id] || def.defaultKey;
+    const key = keys[meta.id] || meta.defaultKey;
     try {
       await register(key, (e) => {
         if (e.state === "Pressed") {
-          def.action();
+          Promise.resolve(action()).catch(console.error);
         }
       });
     } catch (error) {
@@ -37,24 +32,24 @@ async function registerAllGlobalShortcuts() {
   }
 }
 
-async function reregisterAllGlobalShortcuts() {
+async function reregisterAllGlobalShortcuts(actions: ShortcutActionMap) {
   try {
     await unregisterAll();
   } catch (e) {
     console.error("[Shortcuts] 注销全部失败", e);
   }
-  await registerAllGlobalShortcuts();
+  await registerAllGlobalShortcuts(actions);
 }
 
-export function useAppShortcuts() {
+export function useAppShortcuts(actions: ShortcutActionMap) {
   let unlisten: UnlistenFn | undefined;
 
   onMount(async () => {
     await initSettings();
-    await registerAllGlobalShortcuts();
+    await registerAllGlobalShortcuts(actions);
 
     unlisten = await listen(SHORTCUTS_CHANGED_EVENT, () => {
-      reregisterAllGlobalShortcuts();
+      reregisterAllGlobalShortcuts(actions);
     });
   });
 

@@ -29,11 +29,11 @@ function TranslatorApp() {
     setTimeout(() => setBouncing(false), 300);
   };
 
-  useWindowShortcuts([
-    { shortcut: "mod+w", action: hideWindow },
-    { shortcut: "mod+p", action: togglePinned },
-    { shortcut: "mod+,", action: openSettings },
-  ]);
+  useWindowShortcuts("translator", {
+    "window.hide": () => hideWindow(),
+    "translator.togglePinned": () => togglePinned(),
+    "app.openSettings": () => openSettings(),
+  });
 
   // 朗读翻译内容
   const handleRead = () => {

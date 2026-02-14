@@ -5,66 +5,53 @@ import { isMac } from "../../../utils/platform";
 
 const MODIFIER_KEYS = new Set(["Control", "Shift", "Alt", "Meta"]);
 
-const BROWSER_TO_TAURI_MODIFIER: Record<string, string> = {
-  Control: "CommandOrControl",
-  Meta: "CommandOrControl",
-  Shift: "Shift",
-  Alt: "Alt",
+const BROWSER_TO_HOTKEYS_MODIFIER: Record<string, string> = {
+  Control: isMac ? "ctrl" : "ctrl",
+  Meta: isMac ? "command" : "ctrl",
+  Shift: "shift",
+  Alt: "alt",
 };
 
-const BROWSER_TO_TAURI_KEY: Record<string, string> = {
-  " ": "Space",
-  ArrowUp: "Up",
-  ArrowDown: "Down",
-  ArrowLeft: "Left",
-  ArrowRight: "Right",
+const BROWSER_TO_HOTKEYS_KEY: Record<string, string> = {
+  " ": "space",
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
 };
 
 function normalizeKey(key: string): string {
-  if (BROWSER_TO_TAURI_KEY[key]) {
-    return BROWSER_TO_TAURI_KEY[key];
-  }
-  if (key.length === 1) {
-    return key.toUpperCase();
-  }
-  return key;
+  return BROWSER_TO_HOTKEYS_KEY[key] ?? key.toLowerCase();
 }
 
 function buildModifierParts(mods: Set<string>): string[] {
   const order = ["Control", "Meta", "Shift", "Alt"];
   const parts: string[] = [];
-  let hasCommandOrControl = false;
+  let hasPrimary = false;
   for (const mod of order) {
     if (!mods.has(mod)) {
       continue;
     }
-    const mapped = BROWSER_TO_TAURI_MODIFIER[mod];
-    if (mapped === "CommandOrControl") {
-      if (hasCommandOrControl) {
+    const mapped = BROWSER_TO_HOTKEYS_MODIFIER[mod];
+    if (mapped === "command" || mapped === "ctrl") {
+      if (hasPrimary) {
         continue;
       }
-      hasCommandOrControl = true;
+      hasPrimary = true;
     }
     parts.push(mapped);
   }
   return parts;
 }
 
-function formatDisplay(tauriKey: string): string {
-  return tauriKey
+const DISPLAY_MAP: Record<string, string> = isMac
+  ? { command: "⌘", ctrl: "⌃", shift: "⇧", alt: "⌥" }
+  : { ctrl: "Ctrl", shift: "Shift", alt: "Alt" };
+
+function formatDisplay(hotkey: string): string {
+  return hotkey
     .split("+")
-    .map((part) => {
-      switch (part) {
-        case "CommandOrControl":
-          return isMac ? "⌘" : "Ctrl";
-        case "Shift":
-          return isMac ? "⇧" : "Shift";
-        case "Alt":
-          return isMac ? "⌥" : "Alt";
-        default:
-          return part;
-      }
-    })
+    .map((part) => DISPLAY_MAP[part] ?? part.toUpperCase())
     .join(" + ");
 }
 

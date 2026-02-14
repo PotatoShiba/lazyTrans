@@ -1,68 +1,64 @@
-import { onCleanup, onMount } from "solid-js";
-import { isMac } from "../utils/platform";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import hotkeys from "hotkeys-js";
+import { createSignal, onCleanup, onMount } from "solid-js";
+import {
+  getDefaultKeyMap,
+  getWindowShortcutMetas,
+} from "../config/shortcuts.config";
+import type { WindowLabel } from "../config/window.config";
+import { initSettings } from "../stores/settings";
+import {
+  loadShortcutKeysFromStore,
+  SHORTCUTS_CHANGED_EVENT,
+} from "../stores/settings/shortcuts.store";
 
-type WindowShortcutEntry = {
-  shortcut: string;
-  action: () => void;
-};
+type ShortcutActionMap = Record<string, () => void | Promise<void>>;
 
-type ParsedShortcut = {
-  ctrl: boolean;
-  meta: boolean;
-  shift: boolean;
-  alt: boolean;
-  key: string;
-};
+hotkeys.filter = () => true;
 
-function parseShortcut(shortcut: string): ParsedShortcut {
-  const parts = shortcut.split("+").map((p) => p.trim().toLowerCase());
-  const key = parts.pop() ?? "";
+export function useWindowShortcuts(
+  windowLabel: WindowLabel,
+  actions: ShortcutActionMap
+) {
+  const [keyMap, setKeyMap] = createSignal(getDefaultKeyMap());
+  let unlisten: UnlistenFn | undefined;
+  const scope = `window-${windowLabel}`;
 
-  const modifiers = new Set(parts);
+  const metas = getWindowShortcutMetas(windowLabel);
+  const activeMetas = metas.filter((meta) => actions[meta.id]);
 
-  const hasMod = modifiers.has("mod");
+  function bindKeys() {
+    hotkeys.deleteScope(scope);
+    const keys = keyMap();
 
-  return {
-    ctrl: modifiers.has("ctrl") || (hasMod && !isMac),
-    meta: modifiers.has("meta") || (hasMod && isMac),
-    shift: modifiers.has("shift"),
-    alt: modifiers.has("alt"),
-    key,
-  };
-}
-
-function matchShortcut(e: KeyboardEvent, parsed: ParsedShortcut): boolean {
-  return (
-    e.ctrlKey === parsed.ctrl &&
-    e.metaKey === parsed.meta &&
-    e.shiftKey === parsed.shift &&
-    e.altKey === parsed.alt &&
-    e.key.toLowerCase() === parsed.key
-  );
-}
-
-export function useWindowShortcuts(shortcuts: WindowShortcutEntry[]) {
-  const parsedShortcuts = shortcuts.map((s) => ({
-    ...s,
-    parsed: parseShortcut(s.shortcut),
-  }));
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    for (const { parsed, action } of parsedShortcuts) {
-      if (matchShortcut(e, parsed)) {
+    for (const meta of activeMetas) {
+      const combo = keys[meta.id] || meta.defaultKey;
+      hotkeys(combo, { scope }, (e) => {
         e.preventDefault();
         e.stopPropagation();
-        action();
-        break;
-      }
+        Promise.resolve(actions[meta.id]()).catch(console.error);
+      });
     }
+
+    hotkeys.setScope(scope);
+  }
+
+  const reloadKeys = async () => {
+    const keys = await loadShortcutKeysFromStore();
+    setKeyMap(keys);
+    bindKeys();
   };
 
-  onMount(() => {
-    document.addEventListener("keydown", handleKeyDown, { capture: true });
+  onMount(async () => {
+    await initSettings();
+    await reloadKeys();
+    unlisten = await listen(SHORTCUTS_CHANGED_EVENT, () => {
+      reloadKeys().catch(console.error);
+    });
   });
 
   onCleanup(() => {
-    document.removeEventListener("keydown", handleKeyDown, { capture: true });
+    hotkeys.deleteScope(scope);
+    unlisten?.();
   });
 }
