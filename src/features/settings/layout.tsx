@@ -1,11 +1,21 @@
 import { Link, Outlet } from "@tanstack/solid-router";
-import { For } from "solid-js";
+import { For, onMount } from "solid-js";
+import { useI18n } from "../../i18n";
+import { initSettingsStore } from "../../stores/settings";
 import { cn } from "../../utils";
 import { settingsMenuItems } from "./routes";
 
 function SettingsLayout() {
+  const { t } = useI18n();
+
+  onMount(() => {
+    initSettingsStore().catch((err) => {
+      console.warn("initSettingsStore failed", err);
+    });
+  });
+
   return (
-    <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="flex h-screen bg-gray-50">
       <aside class="flex w-56 flex-col bg-white shadow-xl">
         <div class="flex">
           <div>LOGO</div>
@@ -28,7 +38,7 @@ function SettingsLayout() {
                   to={item.to}
                 >
                   <span class={cn("size-5", item.icon)} />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </Link>
               </li>
             )}

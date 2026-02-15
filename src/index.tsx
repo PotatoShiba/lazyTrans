@@ -4,8 +4,10 @@ import {
   RouterProvider,
 } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
+import { I18nProvider } from "./i18n";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
+import { initSettingsStore } from "./stores/settings";
 
 const hideDockIcon = async () => {
   try {
@@ -34,7 +36,23 @@ declare module "@tanstack/solid-router" {
 }
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <I18nProvider>
+      <RouterProvider router={router} />
+    </I18nProvider>
+  );
 }
 
-render(() => <App />, document.getElementById("root") as HTMLElement);
+async function bootstrap() {
+  try {
+    await initSettingsStore();
+  } catch (err) {
+    console.warn("initSettingsStore failed", err);
+  }
+
+  render(() => <App />, document.getElementById("root") as HTMLElement);
+}
+
+bootstrap().catch((err) => {
+  console.error("bootstrap failed", err);
+});

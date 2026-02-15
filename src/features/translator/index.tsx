@@ -4,10 +4,12 @@ import { createSignal } from "solid-js";
 import { openSettings, pinTranslator } from "../../actions/window";
 import HoverWrapper from "../../components/hover-wrapper";
 import { useWindowShortcuts } from "../../hooks/use-window-shortcuts";
+import { useI18n } from "../../i18n";
 import { cn } from "../../utils";
 import { hideWindow } from "../../utils/window";
 
 function TranslatorApp() {
+  const { t } = useI18n();
   const [sourceText, setSourceText] = createSignal("");
   const [pinned, setPinned] = createSignal(false);
   const [bouncing, setBouncing] = createSignal(false);
@@ -66,7 +68,10 @@ function TranslatorApp() {
 
         {/* 右侧工具按钮 */}
         <div class="flex gap-x-2">
-          <HoverWrapper onClick={openSettings} title="设置, cmd+,">
+          <HoverWrapper
+            onClick={openSettings}
+            title={t("translator.settingsTooltip")}
+          >
             <span class="icon-[stash--sliders-h] scale-125" />
           </HoverWrapper>
         </div>
@@ -106,7 +111,7 @@ function TranslatorApp() {
           class="w-full rounded-lg bg-blue-600 py-2 text-white transition-colors hover:bg-blue-700"
           type="button"
         >
-          翻译
+          {t("translator.translate")}
         </button>
       </div>
     </div>

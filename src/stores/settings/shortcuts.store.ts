@@ -1,4 +1,3 @@
-import { emit } from "@tauri-apps/api/event";
 import type { Store } from "@tauri-apps/plugin-store";
 import { createSignal } from "solid-js";
 import {
@@ -7,11 +6,9 @@ import {
   type ShortcutMeta,
 } from "../../config/shortcuts.config";
 import { isMac } from "../../utils/platform";
-import { getStore, type SettingsModule } from "./base";
+import type { SettingsModule } from "./base";
 
 type ShortcutKeyMap = Record<string, string>;
-
-export const SHORTCUTS_CHANGED_EVENT = "shortcuts-changed";
 
 const [getShortcutKeys, setShortcutKeys] = createSignal<ShortcutKeyMap>({});
 
@@ -37,13 +34,6 @@ function migrateKeyMap(map: ShortcutKeyMap): ShortcutKeyMap {
   return changed ? migrated : map;
 }
 
-export async function loadShortcutKeysFromStore(): Promise<ShortcutKeyMap> {
-  const store = await getStore();
-  const saved = await store.get<ShortcutKeyMap>("shortcuts");
-  const merged = { ...getDefaultKeyMap(), ...(saved || {}) };
-  return migrateKeyMap(merged);
-}
-
 class ShortcutsStore implements SettingsModule {
   private store: Store | null = null;
   private readonly STORE_KEY = "shortcuts";
@@ -60,6 +50,14 @@ class ShortcutsStore implements SettingsModule {
     }
   }
 
+  subscribe(store: Store) {
+    store.onKeyChange<ShortcutKeyMap>(this.STORE_KEY, (newValue) => {
+      if (newValue) {
+        setShortcutKeys(newValue);
+      }
+    });
+  }
+
   getAllShortcutKeys = () => getShortcutKeys();
 
   getShortcutKey = (id: string) => getShortcutKeys()[id];
@@ -68,14 +66,12 @@ class ShortcutsStore implements SettingsModule {
     const newMap = { ...getShortcutKeys(), [id]: key };
     setShortcutKeys(newMap);
     await this.store?.set(this.STORE_KEY, newMap);
-    await emit(SHORTCUTS_CHANGED_EVENT);
   };
 
   resetShortcuts = async () => {
     const defaults = getDefaultKeyMap();
     setShortcutKeys(defaults);
     await this.store?.set(this.STORE_KEY, defaults);
-    await emit(SHORTCUTS_CHANGED_EVENT);
   };
 
   getShortcuts = (): (ShortcutMeta & { currentKey: string })[] => {

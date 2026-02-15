@@ -16,4 +16,6 @@ export async function getStore(): Promise<Store> {
 export interface SettingsModule {
   /** 从持久化存储加载数据到内存 signal */
   load(store: Store): Promise<void>;
+  /** 订阅跨窗口的 store 变化，同步更新本窗口的 signal */
+  subscribe(store: Store): void;
 }

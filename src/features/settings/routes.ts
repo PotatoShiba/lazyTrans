@@ -1,10 +1,11 @@
+import type { Dictionary } from "../../i18n";
 import type { FileRouteTypes } from "../../routeTree.gen";
 
 type RouteTo = FileRouteTypes["to"];
 
 export type SettingsMenuItem = {
   id: string;
-  label: string;
+  labelKey: keyof Dictionary & `settings.menu.${string}`;
   to: RouteTo;
   icon: string;
 };
@@ -13,25 +14,25 @@ export const settingsMenuItems: SettingsMenuItem[] = [
   {
     id: "general",
     icon: "icon-[tabler--settings]",
-    label: "通用",
+    labelKey: "settings.menu.general",
     to: "/settings",
   },
   {
     id: "shortcuts",
     icon: "icon-[tabler--keyboard]",
-    label: "快捷键",
+    labelKey: "settings.menu.shortcuts",
     to: "/settings/shortcuts",
   },
   {
     id: "language",
     icon: "icon-[tabler--language]",
-    label: "语言",
+    labelKey: "settings.menu.language",
     to: "/settings/language",
   },
   {
     id: "about",
     icon: "icon-[tabler--info-circle]",
-    label: "关于",
+    labelKey: "settings.menu.about",
     to: "/settings/about",
   },
 ];

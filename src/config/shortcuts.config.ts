@@ -1,9 +1,10 @@
+import type { Dictionary } from "../i18n";
 import { isMac } from "../utils/platform";
 import type { WindowLabel } from "./window.config";
 
 export type ShortcutMeta = {
   id: string;
-  label: string;
+  labelKey: keyof Dictionary & `shortcuts.${string}`;
   defaultKey: string;
   category: "global" | "internal";
   windows?: WindowLabel[];
@@ -15,27 +16,27 @@ const MOD = isMac ? "command" : "ctrl";
 export const SHORTCUT_METAS: ShortcutMeta[] = [
   {
     id: "translate",
-    label: "翻译",
+    labelKey: "shortcuts.translate",
     defaultKey: `${MOD}+.`,
     category: "global",
   },
   {
     id: "window.hide",
-    label: "隐藏窗口",
+    labelKey: "shortcuts.hideWindow",
     defaultKey: `${MOD}+w`,
     category: "internal",
     windows: ["translator"],
   },
   {
     id: "translator.togglePinned",
-    label: "置顶/取消置顶",
+    labelKey: "shortcuts.togglePinned",
     defaultKey: `${MOD}+p`,
     category: "internal",
     windows: ["translator"],
   },
   {
     id: "app.openSettings",
-    label: "打开设置",
+    labelKey: "shortcuts.openSettings",
     defaultKey: `${MOD}+,`,
     category: "internal",
     windows: ["translator"],

@@ -1,5 +1,6 @@
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { initSettings } from "../../../stores/settings";
+import { useI18n } from "../../../i18n";
+import { initSettingsStore } from "../../../stores/settings";
 import { shortcutsStore } from "../../../stores/settings/shortcuts.store";
 import { isMac } from "../../../utils/platform";
 
@@ -56,6 +57,7 @@ function formatDisplay(hotkey: string): string {
 }
 
 function ShortcutRecorder(props: { id: string; currentKey: string }) {
+  const { t } = useI18n();
   const [recording, setRecording] = createSignal(false);
   const [modifiers, setModifiers] = createSignal<Set<string>>(
     new Set<string>()
@@ -120,7 +122,7 @@ function ShortcutRecorder(props: { id: string; currentKey: string }) {
   const recordingPreview = () => {
     const mods = modifiers();
     if (mods.size === 0) {
-      return "请按下快捷键...";
+      return t("settings.shortcuts.recording");
     }
     return `${formatDisplay(buildModifierParts(mods).join("+"))} + ...`;
   };
@@ -144,7 +146,9 @@ function ShortcutRecorder(props: { id: string; currentKey: string }) {
 }
 
 function ShortcutsSettings() {
-  onMount(() => initSettings());
+  const { t } = useI18n();
+
+  onMount(() => initSettingsStore());
 
   const shortcuts = () => shortcutsStore.getShortcuts();
   const globalShortcuts = () =>
@@ -155,12 +159,14 @@ function ShortcutsSettings() {
   return (
     <div class="flex flex-col gap-6">
       <div>
-        <h3 class="mb-3 font-semibold text-lg">全局快捷键</h3>
+        <h3 class="mb-3 font-semibold text-lg">
+          {t("settings.shortcuts.globalTitle")}
+        </h3>
         <div class="flex flex-col divide-y divide-gray-200 dark:divide-gray-700">
           <For each={globalShortcuts()}>
             {(s) => (
               <div class="flex items-center justify-between py-2">
-                <div>{s.label}</div>
+                <div>{t(s.labelKey)}</div>
                 <ShortcutRecorder currentKey={s.currentKey} id={s.id} />
               </div>
             )}
@@ -169,12 +175,14 @@ function ShortcutsSettings() {
       </div>
 
       <div>
-        <h3 class="mb-3 font-semibold text-lg">应用内快捷键</h3>
+        <h3 class="mb-3 font-semibold text-lg">
+          {t("settings.shortcuts.internalTitle")}
+        </h3>
         <div class="flex flex-col divide-y divide-gray-200 dark:divide-gray-700">
           <For each={internalShortcuts()}>
             {(s) => (
               <div class="flex items-center justify-between py-2">
-                <div>{s.label}</div>
+                <div>{t(s.labelKey)}</div>
                 <ShortcutRecorder currentKey={s.currentKey} id={s.id} />
               </div>
             )}
