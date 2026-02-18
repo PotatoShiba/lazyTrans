@@ -17,6 +17,12 @@ export default defineConfig(async () => ({
     solid(),
   ],
 
+  resolve: {
+    alias: {
+      "@": resolve(import.meta.dirname, "./src"),
+    },
+  },
+
   build: {
     rollupOptions: {
       input: {
