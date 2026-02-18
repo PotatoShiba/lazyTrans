@@ -3,6 +3,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createSignal } from "solid-js";
 import { openSettings, pinTranslator } from "../../actions/window";
 import HoverWrapper from "../../components/hover-wrapper";
+import { useAutoWindowHeight } from "../../hooks/use-auto-window-height";
 import { useWindowShortcuts } from "../../hooks/use-window-shortcuts";
 import { useI18n } from "../../i18n";
 import { cn } from "../../utils";
@@ -15,6 +16,11 @@ function Translator() {
   const [bouncing, setBouncing] = createSignal(false);
   const [copyStatus, setCopyStatus] = createSignal(false);
   const currentWindow = getCurrentWebviewWindow();
+  let rootRef: HTMLDivElement | null = null;
+
+  useAutoWindowHeight({
+    getContainer: () => rootRef,
+  });
 
   const handleDragStart = (event: PointerEvent) => {
     if (event.button !== 0) {
@@ -50,7 +56,12 @@ function Translator() {
   };
 
   return (
-    <div class="flex size-full flex-col gap-y-2 rounded-xl bg-white p-2">
+    <div
+      class="flex w-full flex-col gap-y-2 rounded-xl bg-background p-2"
+      ref={(el) => {
+        rootRef = el;
+      }}
+    >
       {/* 顶部工具栏 */}
       <div
         class="flex items-center justify-between"
@@ -79,7 +90,8 @@ function Translator() {
 
       <div class="rounded-lg bg-zinc-100 p-1">
         <textarea
-          class="min-h-14 w-full resize-none px-1 text-sm focus:outline-none"
+          autofocus
+          class="field-sizing-content max-h-300 min-h-14 w-full resize-none overflow-y-auto px-1 text-sm focus:outline-none"
           onInput={(e) => setSourceText(e.currentTarget.value)}
           value={sourceText()}
         />
