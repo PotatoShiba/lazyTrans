@@ -1,10 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "./styles/base.css";
+@import "./styles/base.css" layer(base);
+
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant data-expanded (&[data-expanded]);
+@custom-variant data-closed (&[data-closed]);
+@custom-variant data-checked (&[data-checked]);
+@custom-variant data-highlighted (&[data-highlighted]);
+@custom-variant data-selected (&[data-selected]);
+@custom-variant data-disabled (&[data-disabled]);
 @plugin "@iconify/tailwind4";
 
 body {

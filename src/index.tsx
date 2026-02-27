@@ -4,6 +4,7 @@ import {
   RouterProvider,
 } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
+import { useTheme } from "./hooks/use-theme";
 import { I18nProvider } from "./i18n";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
@@ -36,6 +37,8 @@ declare module "@tanstack/solid-router" {
 }
 
 function App() {
+  useTheme();
+
   return (
     <I18nProvider>
       <RouterProvider router={router} />
@@ -44,9 +47,9 @@ function App() {
 }
 
 async function bootstrap() {
-  render(() => <App />, document.getElementById("root") as HTMLElement);
-
   await initSettingsStore();
+
+  render(() => <App />, document.getElementById("root") as HTMLElement);
 }
 
 bootstrap();

@@ -1,50 +1,71 @@
 import { Link, Outlet } from "@tanstack/solid-router";
 import { For } from "solid-js";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "../../components/ui/sidebar";
 import { useI18n } from "../../i18n";
-import { cn } from "../../utils";
 import { settingsMenuItems } from "./config";
 
 function SettingsLayout() {
   const { t } = useI18n();
 
   return (
-    <div class="flex h-screen bg-gray-50">
-      <aside class="flex w-56 flex-col bg-white shadow-xl">
-        <div class="flex">
-          <div>LOGO</div>
-          <div>lazyTrans</div>
-        </div>
-
-        <ul class="flex-1 space-y-1 px-2 py-4">
-          <For each={settingsMenuItems}>
-            {(item) => (
-              <li>
-                <Link
-                  activeOptions={{ exact: true }}
-                  activeProps={{
-                    class: "bg-blue-50 text-blue-500",
-                  }}
-                  class="flex items-center gap-x-2 rounded-lg px-4 py-2.5 font-medium text-sm transition-colors"
-                  inactiveProps={{
-                    class: "hover:bg-gray-100",
-                  }}
-                  to={item.to}
-                >
-                  <span class={cn("size-5", item.icon)} />
-                  <span>{t(item.labelKey)}</span>
-                </Link>
-              </li>
-            )}
-          </For>
-        </ul>
-      </aside>
-
-      <main class="flex-1 overflow-auto">
-        <div class="p-8">
+    <SidebarProvider class="bg-background text-foreground">
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <div class="flex items-center gap-2 px-2 py-1">
+            <div class="font-semibold text-sm">logo</div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("settings.title")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <For each={settingsMenuItems}>
+                  {(item) => (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        activeOptions={{ exact: item.id === "general" }}
+                        activeProps={{
+                          class:
+                            "bg-sidebar-accent text-sidebar-accent-foreground",
+                        }}
+                        as={Link}
+                        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        to={item.to}
+                      >
+                        <span class={`${item.icon} size-4 shrink-0`} />
+                        <span>{t(item.labelKey)}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </For>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset>
+        <header class="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger class="-ml-1 text-foreground" />
+        </header>
+        <main class="flex-1 overflow-auto p-8">
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

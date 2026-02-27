@@ -3,6 +3,9 @@
   "extends": ["ultracite/biome/core", "ultracite/biome/solid"],
   "linter": {
     "rules": {
+      "performance": {
+        "noNamespaceImport": "off"
+      },
       "style": {
         "useConsistentTypeDefinitions": {
           "level": "off",
