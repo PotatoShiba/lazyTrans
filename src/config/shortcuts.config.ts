@@ -25,7 +25,7 @@ export const SHORTCUT_METAS: ShortcutMeta[] = [
     labelKey: "shortcuts.hideWindow",
     defaultKey: `${MOD}+w`,
     category: "internal",
-    windows: ["translator"],
+    windows: ["translator", "settings"],
   },
   {
     id: "translator.togglePinned",

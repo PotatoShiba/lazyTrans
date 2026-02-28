@@ -3,7 +3,7 @@ import {
   getCurrentWebviewWindow,
   WebviewWindow,
 } from "@tauri-apps/api/webviewWindow";
-import { WINDOW_CONFIG, type WindowLabel } from "../config/window.config";
+import type { WindowLabel } from "../config/window.config";
 
 async function getWindow(label?: WindowLabel) {
   if (!label) {
@@ -11,15 +11,6 @@ async function getWindow(label?: WindowLabel) {
   }
 
   return await WebviewWindow.getByLabel(label);
-}
-
-function createWindow(label: WindowLabel): Promise<WebviewWindow> {
-  const { label: _, ...options } = WINDOW_CONFIG[label];
-  const win = new WebviewWindow(label, { ...options, visible: true });
-  return new Promise((resolve, reject) => {
-    win.once("tauri://created", () => resolve(win));
-    win.once("tauri://error", (e) => reject(e));
-  });
 }
 
 async function focusAnotherVisibleWindow(): Promise<boolean> {
@@ -39,7 +30,7 @@ async function focusAnotherVisibleWindow(): Promise<boolean> {
 }
 
 export function showWindow(label?: WindowLabel) {
-  getOrCreateWindow(label)
+  getWindow(label)
     .then(async (win) => {
       if (!win) {
         return;
@@ -50,19 +41,6 @@ export function showWindow(label?: WindowLabel) {
       await win.setFocus();
     })
     .catch(() => undefined);
-}
-
-async function getOrCreateWindow(label?: WindowLabel) {
-  const win = await getWindow(label);
-  if (win) {
-    return win;
-  }
-
-  if (label) {
-    return createWindow(label);
-  }
-
-  return null;
 }
 
 export function hideWindow(label?: WindowLabel) {

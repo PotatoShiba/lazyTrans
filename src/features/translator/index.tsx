@@ -2,13 +2,17 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createSignal } from "solid-js";
 import { Textarea } from "@/components/ui/textarea";
-import { openSettings, pinTranslator } from "../../actions/window";
 import HoverWrapper from "../../components/hover-wrapper";
 import { useAutoWindowHeight } from "../../hooks/use-auto-window-height";
 import { useWindowShortcuts } from "../../hooks/use-window-shortcuts";
 import { useI18n } from "../../i18n";
 import { cn } from "../../utils";
-import { hideWindow } from "../../utils/window";
+import {
+  hideAllWindows,
+  hideWindow,
+  setAlwaysOnTop,
+  showWindow,
+} from "../../utils/window";
 
 function Translator() {
   const { t } = useI18n();
@@ -33,7 +37,7 @@ function Translator() {
   const togglePinned = () => {
     const next = !pinned();
     setPinned(next);
-    pinTranslator(next);
+    setAlwaysOnTop(next, "translator");
     setBouncing(true);
     setTimeout(() => setBouncing(false), 300);
   };
@@ -41,7 +45,10 @@ function Translator() {
   useWindowShortcuts("translator", {
     "window.hide": () => hideWindow(),
     "translator.togglePinned": () => togglePinned(),
-    "app.openSettings": () => openSettings(),
+    "app.openSettings": async () => {
+      await hideAllWindows();
+      showWindow("settings");
+    },
   });
 
   // 朗读翻译内容
@@ -81,7 +88,10 @@ function Translator() {
         {/* 右侧工具按钮 */}
         <div class="flex gap-x-2">
           <HoverWrapper
-            onClick={openSettings}
+            onClick={async () => {
+              await hideAllWindows();
+              showWindow("settings");
+            }}
             title={t("translator.settingsTooltip")}
           >
             <span class="icon-[stash--sliders-h] scale-125" />

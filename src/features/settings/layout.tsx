@@ -1,6 +1,8 @@
 import { Link, Outlet } from "@tanstack/solid-router";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { For } from "solid-js";
+import { useWindowShortcuts } from "@/hooks/use-window-shortcuts";
+import { hideWindow } from "@/utils/window";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +22,10 @@ import { settingsMenuItems } from "./config";
 function SettingsLayout() {
   const { t } = useI18n();
   const currentWindow = getCurrentWebviewWindow();
+
+  useWindowShortcuts("translator", {
+    "window.hide": () => hideWindow(),
+  });
 
   const handleDragStart = (event: PointerEvent) => {
     if (event.button !== 0) {

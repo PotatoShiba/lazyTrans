@@ -32,6 +32,21 @@
         "alwaysOnTop": false,
         "transparent": true,
         "visible": false
+      },
+      {
+        "label": "settings",
+        "title": "设置",
+        "url": "index.html/#/settings",
+        "width": 900,
+        "height": 650,
+        "minWidth": 900,
+        "resizable": true,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
