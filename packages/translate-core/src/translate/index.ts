@@ -30,8 +30,7 @@ export function initTranslateProviders(): void {
   ensureBuiltinTranslateProvidersRegistered();
 }
 
-// Keep eager registration for backward compatibility with existing imports.
-initTranslateProviders();
+// Providers are registered lazily on first translate API usage.
 
 export function registerTranslateProvider(
   name: string,
