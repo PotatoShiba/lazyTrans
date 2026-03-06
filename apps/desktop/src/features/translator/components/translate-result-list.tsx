@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import {
   Accordion,
   AccordionContent,
@@ -10,51 +10,18 @@ import { TRANSLATE_PROVIDERS } from "@/services/translate/config";
 import { translateActions, translateConfig } from "@/stores/settings/services";
 import { cn } from "@/utils";
 import { useMultiTranslate } from "../hooks/use-multi-translate";
-import type { TranslateResultItem, TranslateResultListProps } from "../types";
 
-/**
- * 翻译结果列表组件
- * 接收待翻译文本 props，自动调用所有启用的翻译服务并展示结果
- */
+interface TranslateResultListProps {
+  text: string;
+}
+
 export function TranslateResultList(props: TranslateResultListProps) {
   const { t } = useI18n();
   const { results, enabledProviders, triggerProviderTranslation } =
     useMultiTranslate(() => props.text);
 
-  const providerStateMap = createMemo(
-    () => new Map(enabledProviders().map((config) => [config.provider, config]))
-  );
-
-  const [userInteractedProviders, setUserInteractedProviders] = createSignal(
-    new Set<TranslateResultItem["provider"]>()
-  );
-
-  createEffect(() => {
-    props.text;
-    setUserInteractedProviders(new Set<TranslateResultItem["provider"]>());
-  });
-
-  const shouldCollapseByDefault = (item: TranslateResultItem): boolean =>
-    !(item.loading || item.error) && item.resultLines.length === 0;
-
-  const isServiceCollapsed = (item: TranslateResultItem): boolean => {
-    const hasUserInteracted = userInteractedProviders().has(item.provider);
-    if (!hasUserInteracted && shouldCollapseByDefault(item)) {
-      return true;
-    }
-
-    const persistedState = providerStateMap().get(item.provider)?.isCollapsed;
-    if (persistedState !== undefined) {
-      return persistedState;
-    }
-
-    return shouldCollapseByDefault(item);
-  };
-
   const expandedValues = createMemo(() =>
-    results().flatMap((item, index) =>
-      isServiceCollapsed(item) ? [] : [`translate-${index}`]
-    )
+    results().flatMap((item) => (item.isCollapsed ? [] : [item.provider]))
   );
 
   const normalizeAccordionValues = (
@@ -74,37 +41,19 @@ export function TranslateResultList(props: TranslateResultListProps) {
     const previousExpandedSet = new Set(expandedValues());
     const currentResults = results();
 
-    setUserInteractedProviders((prev) => {
-      const next = new Set(prev);
-      for (const [index, item] of currentResults.entries()) {
-        const key = `translate-${index}`;
-        const wasExpanded = previousExpandedSet.has(key);
-        const isExpanded = expandedSet.has(key);
+    for (const item of currentResults) {
+      const wasExpanded = previousExpandedSet.has(item.provider);
+      const isExpanded = expandedSet.has(item.provider);
 
-        if (wasExpanded !== isExpanded) {
-          next.add(item.provider);
-        }
-
-        if (!wasExpanded && isExpanded && shouldCollapseByDefault(item)) {
-          triggerProviderTranslation(item.provider).catch(() => undefined);
-        }
+      if (!wasExpanded && isExpanded) {
+        triggerProviderTranslation(item.provider).catch(() => undefined);
       }
-
-      return next;
-    });
+    }
 
     let hasChanges = false;
 
     const nextProviders = translateConfig.providers.map((config) => {
-      const resultIndex = currentResults.findIndex(
-        (item) => item.provider === config.provider
-      );
-
-      if (resultIndex === -1) {
-        return config;
-      }
-
-      const shouldCollapse = !expandedSet.has(`translate-${resultIndex}`);
+      const shouldCollapse = !expandedSet.has(config.provider);
       if (config.isCollapsed === shouldCollapse) {
         return config;
       }
@@ -140,7 +89,7 @@ export function TranslateResultList(props: TranslateResultListProps) {
           value={expandedValues()}
         >
           <For each={results()}>
-            {(item, index) => {
+            {(item) => {
               const providerInfo = () =>
                 TRANSLATE_PROVIDERS[item.provider] || {
                   name: item.provider,
@@ -148,7 +97,7 @@ export function TranslateResultList(props: TranslateResultListProps) {
                 };
 
               return (
-                <AccordionItem value={`translate-${index()}`}>
+                <AccordionItem value={item.provider}>
                   <AccordionTrigger class="px-2 py-2 no-underline hover:no-underline">
                     <span class="flex items-center gap-x-2">
                       <span

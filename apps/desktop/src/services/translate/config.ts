@@ -1,14 +1,6 @@
 import type { ProviderMeta } from "@lazytrans/translate-core";
 import type { ProviderConfig, TranslateProvider } from "./types";
 
-/** UI 选项格式 */
-export interface ProviderOption<T extends string = string> {
-  description?: string;
-  icon?: string;
-  label: string;
-  value: T;
-}
-
 /** 语言选项格式 */
 export interface LanguageOption {
   icon: string;
@@ -82,15 +74,6 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { value: "ru", label: "Русский", icon: "🇷🇺" },
 ];
 
-export function getProviderOptions(): ProviderOption<TranslateProvider>[] {
-  return Object.entries(TRANSLATE_PROVIDERS).map(([key, meta]) => ({
-    value: key as TranslateProvider,
-    label: meta.name,
-    icon: meta.icon,
-    description: meta.description,
-  }));
-}
-
 export function getProviderMeta(
   provider: TranslateProvider
 ): ProviderMeta | undefined {
@@ -124,5 +107,3 @@ export function getDefaultProviderConfig(
     isCollapsed: false,
   };
 }
-
-export const TRANSLATE_PROVIDER_OPTIONS = getProviderOptions();

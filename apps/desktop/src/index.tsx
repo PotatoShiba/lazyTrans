@@ -52,13 +52,21 @@ function bootstrap() {
 
   const currentWindow = getCurrentWebviewWindow();
   const isSettingsWindow = currentWindow.label === "settings";
+  const isTranslatorWindow = currentWindow.label === "translator";
+  const shouldLoadAllSettings = isSettingsWindow || isTranslatorWindow;
 
   initSettingsStore({
-    mode: isSettingsWindow ? "all" : "critical",
-    scheduleDeferred: !isSettingsWindow,
+    mode: shouldLoadAllSettings ? "all" : "critical",
+    scheduleDeferred: !shouldLoadAllSettings,
   }).catch((error) => {
     console.error("[settings] 初始化失败", error);
   });
+
+  if (isTranslatorWindow) {
+    import("@/services/translate").catch((error) => {
+      console.error("[translator] 预热失败", error);
+    });
+  }
 }
 
 bootstrap();

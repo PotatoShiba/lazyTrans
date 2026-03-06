@@ -1,5 +1,11 @@
 import type { Accessor } from "solid-js";
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+} from "solid-js";
 import type {
   ProviderConfig,
   TranslateProvider,
@@ -9,6 +15,23 @@ import { translateConfig } from "@/stores/settings/services";
 import type { TranslateResultItem } from "../types";
 
 type TranslateFn = typeof import("@/services/translate").translate;
+
+interface ProviderRuntimeState {
+  error: string | null;
+  loading: boolean;
+  resultLines: string[];
+  triggeredTextVersion: number | null;
+}
+
+interface TranslationProviderSnapshot {
+  apiEndpoint?: string;
+  apiKey?: string;
+  maxTokens?: number;
+  model?: string;
+  promptTemplate?: string;
+  provider: TranslateProvider;
+  temperature?: number;
+}
 
 let cachedTranslateFn: TranslateFn | null = null;
 let pendingTranslateFn: Promise<TranslateFn> | null = null;
@@ -35,16 +58,65 @@ function getTranslateFn(): Promise<TranslateFn> {
   return pendingTranslateFn;
 }
 
-/**
- * 多服务翻译 Hook
- * 每次文本触发都会启动新一轮翻译，始终以最新触发为准
- */
-export function useMultiTranslate(text: Accessor<string>) {
-  const [results, setResults] = createSignal<TranslateResultItem[]>([]);
-  const [isAnyLoading, setIsAnyLoading] = createSignal(false);
+function sortProviders(providers: ProviderConfig[]): ProviderConfig[] {
+  return [...providers].sort((a, b) => {
+    const orderA = translateConfig.providerOrder.indexOf(a.provider);
+    const orderB = translateConfig.providerOrder.indexOf(b.provider);
+    const fallbackOrder = Number.MAX_SAFE_INTEGER;
+    return (
+      (orderA === -1 ? fallbackOrder : orderA) -
+      (orderB === -1 ? fallbackOrder : orderB)
+    );
+  });
+}
 
-  // 单调递增版本号：用于屏蔽过期请求对 UI 的写入
-  let activeRunVersion = 0;
+function createRuntimeState(): ProviderRuntimeState {
+  return {
+    error: null,
+    loading: false,
+    resultLines: [],
+    triggeredTextVersion: null,
+  };
+}
+
+export function useMultiTranslate(text: Accessor<string>) {
+  const [providerStates, setProviderStates] = createSignal<
+    Map<TranslateProvider, ProviderRuntimeState>
+  >(new Map());
+
+  let activeRequestVersion = 0;
+  let textVersion = 0;
+  let lastTextSnapshot = "";
+  let lastTranslationSignature = "";
+  let settingsReadyPromise: Promise<void> | null = null;
+
+  const enabledProviders = createMemo(() =>
+    sortProviders(translateConfig.providers)
+  );
+
+  const translationProviders = createMemo<TranslationProviderSnapshot[]>(() =>
+    enabledProviders().map((config) => ({
+      provider: config.provider,
+      apiKey: config.apiKey,
+      apiEndpoint: config.apiEndpoint,
+      model: config.model,
+      promptTemplate: config.promptTemplate,
+      maxTokens: config.maxTokens,
+      temperature: config.temperature,
+    }))
+  );
+
+  const translationSignature = createMemo(() => {
+    const providers = [...translationProviders()].sort((a, b) =>
+      a.provider.localeCompare(b.provider)
+    );
+
+    return JSON.stringify({
+      sourceLang: translateConfig.sourceLang,
+      targetLang: translateConfig.targetLang,
+      providers,
+    });
+  });
 
   const normalizeResultLines = (resultText: string): string[] =>
     resultText
@@ -52,62 +124,61 @@ export function useMultiTranslate(text: Accessor<string>) {
       .map((line) => line.trim())
       .filter(Boolean);
 
-  const getEnabledProviders = (): ProviderConfig[] => {
-    return [...translateConfig.providers].sort((a, b) => {
-      const orderA = translateConfig.providerOrder.indexOf(a.provider);
-      const orderB = translateConfig.providerOrder.indexOf(b.provider);
-      const fallbackOrder = Number.MAX_SAFE_INTEGER;
-      return (
-        (orderA === -1 ? fallbackOrder : orderA) -
-        (orderB === -1 ? fallbackOrder : orderB)
-      );
-    });
+  const ensureSettingsReady = async () => {
+    if (!settingsReadyPromise) {
+      settingsReadyPromise = Promise.all([
+        getTranslateFn(),
+        initSettingsStore({ mode: "all", scheduleDeferred: false }),
+      ])
+        .then(() => undefined)
+        .catch((error) => {
+          settingsReadyPromise = null;
+          throw error;
+        });
+    }
+
+    await settingsReadyPromise;
   };
 
-  const enabledProviders = createMemo(() => getEnabledProviders());
-
-  const isProviderManuallyCollapsed = (provider: ProviderConfig): boolean =>
-    provider.isCollapsed === true;
-
-  const createIdleResults = (
-    providers: ProviderConfig[]
-  ): TranslateResultItem[] =>
-    providers.map((config) => ({
-      provider: config.provider,
-      resultLines: [],
-      error: null,
-      loading: false,
-    }));
-
-  const applyProviderResult = (
-    index: number,
-    runVersion: number,
-    updater: (current: TranslateResultItem) => TranslateResultItem
+  const updateProviderState = (
+    provider: TranslateProvider,
+    requestVersion: number,
+    updater: (current: ProviderRuntimeState) => ProviderRuntimeState
   ) => {
-    if (runVersion !== activeRunVersion) {
+    if (requestVersion !== activeRequestVersion) {
       return;
     }
 
-    setResults((prev) => {
-      if (
-        runVersion !== activeRunVersion ||
-        index < 0 ||
-        index >= prev.length
-      ) {
+    setProviderStates((prev) => {
+      if (requestVersion !== activeRequestVersion) {
         return prev;
       }
-      const next = [...prev];
-      next[index] = updater(next[index]);
+
+      const current = prev.get(provider);
+      if (!current) {
+        return prev;
+      }
+
+      const next = new Map(prev);
+      next.set(provider, updater(current));
       return next;
     });
   };
 
-  const translateSingleProvider = async (
+  const runProvider = async (
     config: ProviderConfig,
-    index: number,
     textSnapshot: string,
-    runVersion: number
+    requestVersion: number,
+    currentTextVersion: number,
+    sourceLang: string,
+    targetLang: string
   ) => {
+    updateProviderState(config.provider, requestVersion, (current) => ({
+      ...current,
+      loading: true,
+      error: null,
+    }));
+
     try {
       const translate = await getTranslateFn();
       const result = await translate(
@@ -119,85 +190,75 @@ export function useMultiTranslate(text: Accessor<string>) {
           maxTokens: config.maxTokens,
           temperature: config.temperature,
           provider: config.provider,
-          sourceLang: translateConfig.sourceLang,
-          targetLang: translateConfig.targetLang,
+          sourceLang,
+          targetLang,
         },
         {
           text: textSnapshot,
-          sourceLang: translateConfig.sourceLang,
-          targetLang: translateConfig.targetLang,
+          sourceLang,
+          targetLang,
         }
       );
 
-      applyProviderResult(index, runVersion, (current) => ({
+      updateProviderState(config.provider, requestVersion, (current) => ({
         ...current,
         resultLines: normalizeResultLines(result.text),
         error: null,
         loading: false,
+        triggeredTextVersion: currentTextVersion,
       }));
     } catch (error) {
-      applyProviderResult(index, runVersion, (current) => ({
+      updateProviderState(config.provider, requestVersion, (current) => ({
         ...current,
         resultLines: [],
         error: error instanceof Error ? error.message : "Translation failed",
         loading: false,
+        triggeredTextVersion: currentTextVersion,
       }));
     }
   };
 
-  const executeTranslation = async (
+  const executeBatch = async (
+    providers: ProviderConfig[],
     textSnapshot: string,
-    runVersion: number
+    requestVersion: number,
+    currentTextVersion: number,
+    sourceLang: string,
+    targetLang: string
   ) => {
-    await Promise.all([
-      getTranslateFn(),
-      initSettingsStore({ mode: "all", scheduleDeferred: false }),
-    ]);
+    await ensureSettingsReady();
 
-    if (runVersion !== activeRunVersion) {
+    if (requestVersion !== activeRequestVersion) {
       return;
     }
 
-    const allProviders = enabledProviders();
-    if (allProviders.length === 0) {
-      setResults([]);
-      setIsAnyLoading(false);
-      return;
-    }
-
-    const initialResults: TranslateResultItem[] = allProviders.map(
-      (config) => ({
-        provider: config.provider,
-        resultLines: [],
-        error: null,
-        loading: !isProviderManuallyCollapsed(config),
-      })
-    );
-
-    setResults(initialResults);
-
-    const hasTranslatableProvider = allProviders.some(
-      (config) => !isProviderManuallyCollapsed(config)
-    );
-    if (!hasTranslatableProvider) {
-      setIsAnyLoading(false);
-      return;
-    }
-
-    const promises = allProviders.map(async (config, index) => {
-      if (isProviderManuallyCollapsed(config)) {
-        return;
+    setProviderStates(() => {
+      const next = new Map<TranslateProvider, ProviderRuntimeState>();
+      for (const config of providers) {
+        next.set(config.provider, {
+          error: null,
+          loading: config.isCollapsed !== true,
+          resultLines: [],
+          triggeredTextVersion: null,
+        });
       }
-
-      await translateSingleProvider(config, index, textSnapshot, runVersion);
+      return next;
     });
 
-    Promise.allSettled(promises).then(() => {
-      if (runVersion !== activeRunVersion) {
-        return;
-      }
-      setIsAnyLoading(false);
-    });
+    const tasks = providers
+      .filter((config) => config.isCollapsed !== true)
+      .map((config) =>
+        runProvider(
+          config,
+          textSnapshot,
+          requestVersion,
+          currentTextVersion,
+          sourceLang,
+          targetLang
+        )
+      );
+
+    await Promise.allSettled(tasks);
   };
 
   const triggerProviderTranslation = async (provider: TranslateProvider) => {
@@ -209,76 +270,107 @@ export function useMultiTranslate(text: Accessor<string>) {
     const providerConfig = enabledProviders().find(
       (config) => config.provider === provider
     );
-    const providerIndex = results().findIndex(
-      (item) => item.provider === provider
-    );
-
-    if (!providerConfig || providerIndex === -1) {
+    if (!providerConfig) {
       return;
     }
 
-    const runVersion = activeRunVersion;
-    setIsAnyLoading(true);
-    applyProviderResult(providerIndex, runVersion, (current) => ({
-      ...current,
-      loading: true,
-      error: null,
-    }));
+    const currentState = providerStates().get(provider);
+    if (!currentState || currentState.loading) {
+      return;
+    }
 
-    await translateSingleProvider(
+    if (currentState.triggeredTextVersion === textVersion) {
+      return;
+    }
+
+    await ensureSettingsReady();
+
+    const requestVersion = activeRequestVersion;
+    if (requestVersion <= 0) {
+      return;
+    }
+
+    await runProvider(
       providerConfig,
-      providerIndex,
       textSnapshot,
-      runVersion
+      requestVersion,
+      textVersion,
+      translateConfig.sourceLang,
+      translateConfig.targetLang
     );
-
-    if (runVersion !== activeRunVersion) {
-      return;
-    }
-
-    setIsAnyLoading(results().some((item) => item.loading));
   };
 
   createEffect(() => {
     const currentText = text().trim();
-    const runVersion = ++activeRunVersion;
+    const currentSignature = translationSignature();
 
-    if (!currentText) {
-      setIsAnyLoading(false);
+    const textChanged = currentText !== lastTextSnapshot;
+    if (textChanged) {
+      lastTextSnapshot = currentText;
+      textVersion += 1;
+    }
+
+    const configChanged = currentSignature !== lastTranslationSignature;
+    if (!(textChanged || configChanged)) {
       return;
     }
 
-    setIsAnyLoading(true);
-    executeTranslation(currentText, runVersion).catch((error) => {
-      if (runVersion !== activeRunVersion) {
+    lastTranslationSignature = currentSignature;
+
+    const providers = untrack(() => enabledProviders());
+    const requestVersion = ++activeRequestVersion;
+
+    if (!currentText) {
+      if (textChanged) {
+        setProviderStates(new Map());
+      }
+      return;
+    }
+
+    executeBatch(
+      providers,
+      currentText,
+      requestVersion,
+      textVersion,
+      translateConfig.sourceLang,
+      translateConfig.targetLang
+    ).catch((error) => {
+      if (requestVersion !== activeRequestVersion) {
         return;
       }
 
-      setResults([]);
-      setIsAnyLoading(false);
+      setProviderStates(() => {
+        const next = new Map<TranslateProvider, ProviderRuntimeState>();
+        for (const config of providers) {
+          next.set(config.provider, createRuntimeState());
+        }
+        return next;
+      });
       console.error("[translate] 初始化或执行失败", error);
     });
   });
 
-  createEffect(() => {
-    const hasText = text().trim().length > 0;
-    const activeProviders = enabledProviders();
-
-    if (hasText) {
-      return;
-    }
-
-    setResults(createIdleResults(activeProviders));
-    setIsAnyLoading(false);
+  onCleanup(() => {
+    activeRequestVersion += 1;
   });
 
-  onCleanup(() => {
-    activeRunVersion += 1;
+  const results = createMemo<TranslateResultItem[]>(() => {
+    const states = providerStates();
+
+    return enabledProviders().map((config) => {
+      const state = states.get(config.provider) ?? createRuntimeState();
+      return {
+        provider: config.provider,
+        resultLines: state.resultLines,
+        error: state.error,
+        loading: state.loading,
+        isCollapsed: config.isCollapsed === true,
+      };
+    });
   });
 
   return {
     results,
-    isAnyLoading,
     enabledProviders,
     triggerProviderTranslation,
   };

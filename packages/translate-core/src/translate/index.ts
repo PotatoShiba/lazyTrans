@@ -26,12 +26,6 @@ function ensureBuiltinTranslateProvidersRegistered(): void {
   registerBuiltinTranslateProviders();
 }
 
-export function initTranslateProviders(): void {
-  ensureBuiltinTranslateProvidersRegistered();
-}
-
-// Providers are registered lazily on first translate API usage.
-
 export function registerTranslateProvider(
   name: string,
   provider: new () => IProvider<

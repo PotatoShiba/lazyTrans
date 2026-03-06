@@ -49,12 +49,6 @@ class ServiceRegistry {
     return Provider ? (new Provider() as T) : undefined;
   }
 
-  // 获取所有可用Provider名称
-  getAvailableProviders(type: ServiceType): string[] {
-    const typeProviders = this.providers.get(type);
-    return typeProviders ? Array.from(typeProviders.keys()) : [];
-  }
-
   // 检查Provider是否存在
   has(type: ServiceType, name: string): boolean {
     const typeProviders = this.providers.get(type);

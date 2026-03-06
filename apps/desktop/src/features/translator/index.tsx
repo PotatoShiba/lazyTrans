@@ -1,8 +1,7 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { createSignal, onMount } from "solid-js";
+import { createSignal } from "solid-js";
 import { Textarea } from "@/components/ui/textarea";
-import { initSettingsStore } from "@/stores/settings";
 import HoverWrapper from "../../components/hover-wrapper";
 import { useAutoWindowHeight } from "../../hooks/use-auto-window-height";
 import { useWindowShortcuts } from "../../hooks/use-window-shortcuts";
@@ -24,9 +23,7 @@ import { TranslateResultList } from "./components";
 function Translator() {
   const { t } = useI18n();
   const [inputText, setInputText] = createSignal("");
-  const [translateText, setTranslateText] = createSignal("", {
-    equals: false,
-  });
+  const [translateText, setTranslateText] = createSignal("");
   const [pinned, setPinned] = createSignal(false);
   const [bouncing, setBouncing] = createSignal(false);
   const [copyStatus, setCopyStatus] = createSignal(false);
@@ -38,13 +35,6 @@ function Translator() {
     getContainer: () => rootRef,
   });
 
-  onMount(() => {
-    initSettingsStore({ mode: "all", scheduleDeferred: false }).catch(
-      (error) => {
-        console.error("[settings] translator 初始化失败", error);
-      }
-    );
-  });
   const handleDragStart = (event: PointerEvent) => {
     if (event.button !== 0) {
       return;
